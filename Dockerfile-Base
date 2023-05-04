@@ -1,0 +1,40 @@
+# Define imagem base como Debian
+FROM debian:bullseye-slim
+
+ENV RUBY_USER rubyuser
+ENV BUNDLER_VERSION 2.3.21
+ENV GEM_UPDATE_VERSION 3.2.3
+ENV RUBY_VERSION 2.5.3
+
+# Instalar dependências necessárias
+RUN apt-get update && \
+  apt-get install -y curl git libssl-dev libreadline-dev zlib1g-dev build-essential
+
+# Adicionar usuário não-root
+RUN useradd -m -s /bin/bash $RUBY_USER
+
+# Permitir ao usuário manipular o Ruby e o Rubenv
+RUN chown -R $RUBY_USER:$RUBY_USER /usr/local
+
+# Instala Rubenv para o usuário não-root
+USER $RUBY_USER
+RUN curl -fsSL https://github.com/rbenv/rbenv-installer/raw/main/bin/rbenv-installer | bash
+ENV PATH="/home/$RUBY_USER/.rbenv/bin:${PATH}"
+ENV PATH="/home/$RUBY_USER/.rbenv/versions/$RUBY_VERSION/bin:${PATH}"
+
+# Instala o ruby 2.5.3
+RUN rbenv install $RUBY_VERSION && \
+  rbenv global $RUBY_VERSION && \
+  gem install bundler -v $BUNDLER_VERSION && \
+  gem update --system $GEM_UPDATE_VERSION
+
+# Configura usuário não-root como principal do logon bash
+USER $RUBY_USER
+RUN echo 'export PATH="$HOME/.rbenv/bin:$PATH"' >> ~/.bashrc && \
+  echo 'eval "$(rbenv init -)"' >> ~/.bashrc
+
+# Definir diretório de trabalho
+WORKDIR /app
+
+# Definir usuário para executar o container
+USER $RUBY_USER
